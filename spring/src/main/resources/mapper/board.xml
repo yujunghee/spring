@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="board"><!-- mapper파일의 이름 -->
+
+	<!-- 컬럼명과 필드명을 매핑 -->
+	<resultMap type="chap07.BoardVo2" id="boardVoMap">
+		<result column="boardno" property="num"/>
+		<result column="title" property="subject"/>
+		<result column="content" property="article"/>
+		<result column="writer" property="author"/>
+	</resultMap>
+	
+	<!-- 코드의 중복을 줄이기 위해 -->
+	<sql id="boardWhere">
+		<where>
+			<if test="searchType == ''">
+				(title LIKE '%${searchWord}%' OR content LIKE '%${searchWord}%')
+			</if>
+			<if test="searchType != null and searchType != ''">
+				${searchType} LIKE '%${searchWord}%' <!-- 굳이 모든if절 만들지않아도 searchType으로 받기때문에 이거 하나로 가능 -->
+			</if>
+			<if test="userno > 0"> <!-- userno의 기본값은 0이고 세션에 set됐으면 userno>0이 되므로 -->
+				AND userno=${userno} <!-- 검색안할때 mybatis가 맨앞의 and는 빼줌 똑똑하군..-->
+			</if>
+		</where>
+	</sql>
+	
+	<select id="count" resultType="int" parameterType="chap07.BoardVo">
+		SELECT COUNT(*) FROM board
+		<include refid="boardWhere"></include>
+	</select>
+	
+	<!-- Map으로도 가능
+	<select id="selectList" resultType="chap07.BoardVo" parameterType="java.util.Map">  searchWord랑 searchType을 Map에 담아서 넣어주려고함(2개 이상을 받기위해)
+	-->
+	<select id="selectList" resultType="chap07.BoardVo" parameterType="chap07.BoardVo"> <!-- searchWord랑 searchType을 Map에 담아서 넣어주려고함(2개 이상을 받기위해) -->
+		SELECT * FROM board 
+		<include refid="boardWhere"></include>
+		ORDER BY 
+		<choose>
+			<when test="orderCond == 'title_asc'">title ASC</when>
+			<when test="orderCond == 'title_desc'">title DESC</when>
+			<when test="orderCond == 'regdate_asc'">regdate ASC</when>
+			<when test="orderCond == 'regdate_desc'">regdate DESC</when>
+			<otherwise>boardno DESC</otherwise>
+		</choose>
+		LIMIT ${startIdx}, 10
+	</select>
+	
+	<insert id="insert" parameterType="chap07.BoardVo">
+		INSERT INTO board (title, content, writer, regdate, filename, userno) 
+		VALUES (#{title}, #{content}, #{writer}, NOW(),#{filename}, #{userno})	
+	</insert>
+
+	<select id="selectOne" parameterType="int" resultType="chap07.BoardVo">
+		SELECT * FROM board WHERE boardno = #{xxx}
+	</select>
+	<!-- resultMap사용하는 경우
+	<select id="selectOne2" parameterType="int" resultMap="boardVoMap">
+		SELECT * FROM board WHERE boardno = #{xxx}
+	</select>
+	-->
+	<!-- resultMap사용하지않고 alias사용한 경우 -->
+	<select id="selectOne2" parameterType="int" resultType="chap07.BoardVo2">
+		SELECT boardno as num, title as subject, content as article, writer as author, regdate FROM board WHERE boardno = #{xxx}
+	</select>
+	
+	<update id="update" parameterType="chap07.BoardVo">
+		UPDATE board SET title=#{title}, content=#{content}, writer=#{writer} WHERE boardno=#{boardno}
+	</update>
+	
+	<delete id="delete" parameterType="int"> <!-- 값이 두개 이상일때는 파라미터로 객체가 필요함 -->
+		DELETE FROM board WHERE boardno=#{boardno}
+	</delete>
+</mapper>
